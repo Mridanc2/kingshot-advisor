@@ -2360,18 +2360,9 @@ function TierSection({ tierIdx, techs, progress, nextTierId, onTap, onMaxAll, de
   const [open, setOpen] = useState(defaultOpen);
   const [showSkip, setShowSkip] = useState(false);
 
-  // Detect transition to "all maxed" — auto-collapse with a small delay so the user
-  // gets to see the green ALL MAX badge before the section folds away.
+  // Note: We previously auto-collapsed sections when all maxed, but this caused
+  // the screen to jump unexpectedly. User keeps the section open after MAX.
   const allMaxedNow = techs.length > 0 && techs.every(({ tier }) => (progress[tier.id] || 0) >= tier.max);
-  const wasMaxedRef = useRef(allMaxedNow);
-  useEffect(() => {
-    if (allMaxedNow && !wasMaxedRef.current && open) {
-      const timer = setTimeout(() => setOpen(false), 1400);
-      wasMaxedRef.current = allMaxedNow;
-      return () => clearTimeout(timer);
-    }
-    wasMaxedRef.current = allMaxedNow;
-  }, [allMaxedNow]);
 
   // When parent signals to scroll to a tier, open this section if it contains it, then scroll
   useEffect(() => {
