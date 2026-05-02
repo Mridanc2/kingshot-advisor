@@ -1155,6 +1155,34 @@ const T = {
     ja: '王国を探していますか？',
     ko: '왕국을 찾고 있나요?',
   },
+  markTierDone: {
+    en: 'Mark all done — Tier',
+    he: 'סמן הכל כמושלם — דרגה',
+    ru: 'Отметить всё — Уровень',
+    de: 'Alles erledigt — Stufe',
+    es: 'Todo hecho — Nivel',
+    fr: 'Tout fait — Niveau',
+    pt: 'Tudo feito — Nível',
+    it: 'Tutto fatto — Livello',
+    tr: 'Tümü tamam — Seviye',
+    zh: '全部完成 — 级别',
+    ja: '全て完了 — ティア',
+    ko: '모두 완료 — 티어',
+  },
+  tierMaxed: {
+    en: 'Tier marked done',
+    he: 'דרגה סומנה כמושלמת',
+    ru: 'Уровень отмечен',
+    de: 'Stufe erledigt',
+    es: 'Nivel completado',
+    fr: 'Niveau terminé',
+    pt: 'Nível concluído',
+    it: 'Livello completato',
+    tr: 'Seviye tamamlandı',
+    zh: '级别完成',
+    ja: 'ティア完了',
+    ko: '티어 완료',
+  },
 };
 
 // Translate helper
@@ -1431,12 +1459,19 @@ const RECRUIT = {
     ],
   },
 };
+// Tier definitions — verified against kingshot.net official data
+// BATTLE: 102 techs, 459 total levels — levels grow with tier (3, 3, 4, 5, 6, 6 for stat techs)
 const BATTLE_LO = { levels: [3, 3, 4, 5, 6, 6], bonuses: ['+1.50%', '+2.50%', '+4.50%', '+10.00%', '+13.50%', '+15.25%'] };
 const BATTLE_HI = { levels: [3, 3, 4, 5, 6, 6], bonuses: ['+4.00%', '+5.50%', '+11.50%', '+22.50%', '+31.75%', '+36.50%'] };
 const BATTLE_NUM = { levels: [3, 3, 4, 5, 6, 6], bonuses: ['+1000', '+1400', '+2800', '+5600', '+8000', '+13400'] };
-const GROWTH = { levels: [3, 3, 4, 5, 5, 6, 6], bonuses: ['', '', '', '', '', '', ''] };
-const ECON6 = { levels: [3, 3, 4, 5, 6, 6], bonuses: ['', '', '', '', '', ''] };
-const ECON5 = { levels: [3, 3, 4, 5, 6], bonuses: ['', '', '', '', ''] };
+// GROWTH: 45 techs — all tiers are 3 levels per kingshot.net
+const GROWTH = { levels: [3, 3, 3, 3, 3, 3, 3], bonuses: ['', '', '', '', '', '', ''] };
+// ECONOMY: 44 techs — all tiers are 3 levels per kingshot.net (gathering AND output)
+const ECON6 = { levels: [3, 3, 3, 3, 3, 3], bonuses: ['', '', '', '', '', ''] };
+const ECON5 = { levels: [3, 3, 3, 3, 3], bonuses: ['', '', '', '', ''] };
+// Output techs (Mill/Sawmill/Quarry/Mine) — same 3-per-tier as gathering
+const ECON_OUT6 = { levels: [3, 3, 3, 3, 3, 3], bonuses: ['', '', '', '', '', ''] };
+const ECON_OUT5 = { levels: [3, 3, 3, 3, 3], bonuses: ['', '', '', '', ''] };
 const CMD = { levels: [1, 1, 1], bonuses: ['+1', '+1', '+1'] };
 
 function fam(id, name, pattern, meta) {
@@ -1489,10 +1524,10 @@ const TREES = {
       fam('wood-gathering', 'Wood Gathering', ECON6, { effect: 'Wood Gathering', icon: TreePine, priority: 'HIGH' }),
       fam('stone-mining', 'Stone Mining', ECON5, { effect: 'Stone Gathering', icon: Mountain, priority: 'HIGH' }),
       fam('iron-mining', 'Iron Mining', ECON5, { effect: 'Iron Gathering', icon: Hammer, priority: 'HIGH' }),
-      fam('bread-output', 'Bread Output', ECON6, { effect: 'Mill Production', icon: Heart, priority: 'TRAP', tag: 'SKIP', tip: '⚠️ Building output is too low to matter. Events and gathering give 10× more. SKIP entirely.' }),
-      fam('wood-output', 'Wood Output', ECON6, { effect: 'Sawmill Production', icon: TreePine, priority: 'TRAP', tag: 'SKIP', tip: '⚠️ SKIP — building output is capped too low.' }),
-      fam('stone-output', 'Stone Output', ECON5, { effect: 'Quarry Production', icon: Mountain, priority: 'TRAP', tag: 'SKIP', tip: '⚠️ SKIP — building output is capped too low.' }),
-      fam('iron-output', 'Iron Output', ECON5, { effect: 'Mine Production', icon: Hammer, priority: 'TRAP', tag: 'SKIP', tip: '⚠️ SKIP — building output is capped too low.' }),
+      fam('bread-output', 'Bread Output', ECON_OUT6, { effect: 'Mill Production', icon: Heart, priority: 'TRAP', tag: 'SKIP', tip: '⚠️ Building output is too low to matter. Events and gathering give 10× more. SKIP entirely.' }),
+      fam('wood-output', 'Wood Output', ECON_OUT6, { effect: 'Sawmill Production', icon: TreePine, priority: 'TRAP', tag: 'SKIP', tip: '⚠️ SKIP — building output is capped too low.' }),
+      fam('stone-output', 'Stone Output', ECON_OUT5, { effect: 'Quarry Production', icon: Mountain, priority: 'TRAP', tag: 'SKIP', tip: '⚠️ SKIP — building output is capped too low.' }),
+      fam('iron-output', 'Iron Output', ECON_OUT5, { effect: 'Mine Production', icon: Hammer, priority: 'TRAP', tag: 'SKIP', tip: '⚠️ SKIP — building output is capped too low.' }),
     ],
     maxTier: 6,
   },
@@ -1749,11 +1784,10 @@ function HexNode({ family, tier, currentLevel, isNext, isPriorityNext, onTap, si
       }}>
       <button
         onClick={() => onTap({ family, tier, currentLevel })}
-        disabled={isSkip}
         style={{
           width: size, height: size, padding: 0,
           background: 'transparent', border: 'none',
-          cursor: isSkip ? 'not-allowed' : 'pointer', position: 'relative',
+          cursor: 'pointer', position: 'relative',
         }}
       >
         <svg viewBox="0 0 100 100" width={size} height={size} style={{ display: 'block' }}>
@@ -2239,7 +2273,7 @@ function PriorityGroup({ title, subtitle, techs, progress, nextTierId, onTap, he
   );
 }
 
-function TierSection({ tierIdx, techs, progress, nextTierId, onTap, defaultOpen, lang = 'en', fsScale = 1, scrollSignal, flashTierId }) {
+function TierSection({ tierIdx, techs, progress, nextTierId, onTap, onMaxAll, defaultOpen, lang = 'en', fsScale = 1, scrollSignal, flashTierId }) {
   const [open, setOpen] = useState(defaultOpen);
   const [showSkip, setShowSkip] = useState(false);
 
@@ -2330,6 +2364,29 @@ function TierSection({ tierIdx, techs, progress, nextTierId, onTap, defaultOpen,
       </button>
       {open && (
         <div style={{ marginTop: 12, padding: '0 4px' }}>
+          {/* Mark entire tier as done — quick bulk action for veterans */}
+          {!allMaxed && onMaxAll && (
+            <button
+              onClick={() => {
+                const tierIds = techs
+                  .filter(({ tier }) => (progress[tier.id] || 0) < tier.max)
+                  .map(({ tier }) => tier.id);
+                if (tierIds.length > 0) onMaxAll(tierIds);
+              }}
+              style={{
+                width: '100%', marginBottom: 14,
+                padding: '10px 14px', borderRadius: 10,
+                border: `1.5px dashed ${C.teal}`,
+                background: C.tealBg, color: C.tealDark,
+                cursor: 'pointer',
+                fontSize: 12 * fsScale, fontWeight: 800, letterSpacing: '0.05em',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+              }}
+            >
+              <Check style={{ width: 14, height: 14 }} strokeWidth={3} />
+              {t('markTierDone', lang)} {ROMAN[tierIdx]}
+            </button>
+          )}
           <PriorityGroup
             title={t('startWith', lang)}
             subtitle={t('startWithSub', lang)}
@@ -2407,7 +2464,7 @@ function TierSection({ tierIdx, techs, progress, nextTierId, onTap, defaultOpen,
   );
 }
 
-function TreeGridView({ tree, progress, nextTierId, onTap, lang, fsScale, scrollSignal, flashTierId }) {
+function TreeGridView({ tree, progress, nextTierId, onTap, onMaxAll, lang, fsScale, scrollSignal, flashTierId }) {
   const visibleFams = tree.families;
 
   return (
@@ -2431,11 +2488,10 @@ function TreeGridView({ tree, progress, nextTierId, onTap, lang, fsScale, scroll
           <TierSection
             key={tIdx} tierIdx={tIdx} techs={techs}
             progress={progress} nextTierId={nextTierId}
-            onTap={onTap} defaultOpen={isFirstIncomplete}
+            onTap={onTap} onMaxAll={onMaxAll} defaultOpen={isFirstIncomplete}
             lang={lang} fsScale={fsScale}
             scrollSignal={scrollSignal}
             flashTierId={flashTierId}
-            lang={lang}
           />
         );
       })}
@@ -2599,8 +2655,8 @@ function TierDrawer({ payload, spendProfile, onClose, onInc, onDec, onMax, onZer
           </div>
         )}
 
-        {!isSkip && (
-          <>
+        {/* Always show level controls — even for SKIP techs in case user already did them */}
+        <>
             <div style={{
               padding: 18, borderRadius: 16,
               background: done ? C.tealBg : C.bgSoft, marginBottom: 12,
@@ -2693,7 +2749,6 @@ function TierDrawer({ payload, spendProfile, onClose, onInc, onDec, onMax, onZer
               )}
             </div>
           </>
-        )}
       </div>
     </div>
   );
@@ -2776,7 +2831,17 @@ export default function KingshotAdvisor() {
         if (r && r.value) {
           const s = JSON.parse(r.value);
           if (s.mainTroop) setMainTroop(s.mainTroop);
-          if (s.progress) setProgress(s.progress);
+          if (s.progress) {
+            // Clamp any saved levels that exceed the current max for that tier
+            // (e.g. if max changed from 6 → 3 in an update)
+            const clampedProgress = {};
+            for (const tierId in s.progress) {
+              const max = findTierMax(tierId);
+              const saved = s.progress[tierId] || 0;
+              clampedProgress[tierId] = max > 0 ? Math.min(saved, max) : saved;
+            }
+            setProgress(clampedProgress);
+          }
           if (s.activeTree) setActiveTree(s.activeTree);
           if (s.spendProfile) setSpendProfile(s.spendProfile);
           if (s.view) setView(s.view);
@@ -2992,6 +3057,24 @@ export default function KingshotAdvisor() {
     triggerFlash(tierId);
   };
 
+  // Bulk: max out everything in a tier at once
+  const maxAllInTier = (tierIds) => {
+    if (!tierIds || tierIds.length === 0) return;
+    // Snapshot previous values for undo
+    const prevValues = {};
+    tierIds.forEach(id => { prevValues[id] = progress[id] || 0; });
+    // Build new progress with all maxed
+    setProgress(prev => {
+      const next = { ...prev };
+      tierIds.forEach(id => { next[id] = findTierMax(id); });
+      return next;
+    });
+    const undoFn = () => {
+      setProgress(prev => ({ ...prev, ...prevValues }));
+    };
+    showToast(`✓ ${t('tierMaxed', lang)} (${tierIds.length})`, 'success', undoFn);
+  };
+
   const zeroTier = (tierId) => {
     const cur = progress[tierId] || 0;
     if (cur === 0) return;
@@ -3063,7 +3146,7 @@ export default function KingshotAdvisor() {
         @keyframes pulseDot { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.5; transform: scale(1.4); } }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes toastIn {
-          0% { opacity: 0; transform: translateX(-50%) translateY(40px) scale(0.85); }
+          0% { opacity: 0; transform: translateX(-50%) translateY(-40px) scale(0.85); }
           100% { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
         }
         @keyframes toastTimerShrink {
@@ -3814,6 +3897,7 @@ export default function KingshotAdvisor() {
               <TreeGridView
                 tree={tree} progress={progress}
                 nextTierId={next ? next.tier.id : null} onTap={setDrawerPayload}
+                onMaxAll={maxAllInTier}
                 lang={lang} fsScale={fsScale}
                 scrollSignal={scrollSignal}
                 flashTierId={flashTierId}
@@ -4497,9 +4581,10 @@ export default function KingshotAdvisor() {
       {toast && (
         <div
           key={toast.id}
+          onClick={() => setToast(null)}
           style={{
             position: 'fixed',
-            bottom: 24, left: '50%', transform: 'translateX(-50%)',
+            top: 16, left: '50%', transform: 'translateX(-50%)',
             zIndex: 100,
             padding: '10px 14px 10px 18px', borderRadius: 999,
             background: toast.kind === 'success' ? C.tealDark : C.coral,
@@ -4510,6 +4595,7 @@ export default function KingshotAdvisor() {
             display: 'flex', alignItems: 'center', gap: 10,
             maxWidth: 'calc(100vw - 32px)',
             overflow: 'hidden',
+            cursor: 'pointer',
           }}
         >
           <span style={{
@@ -4518,7 +4604,8 @@ export default function KingshotAdvisor() {
           }}>{toast.text}</span>
           {toast.undo && (
             <button
-              onClick={() => {
+              onClick={(e) => {
+                e.stopPropagation();
                 try { toast.undo(); } catch (e) {}
                 setToast(null);
               }}
