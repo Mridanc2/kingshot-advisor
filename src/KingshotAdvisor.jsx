@@ -1402,12 +1402,12 @@ const TECH_WHY = {
     he: 'בונוס תקיפה אוניברסלי. שימושי אבל קטלניות (Assault Techniques) מתעלה עליו כמכפיל נזק.',
   },
   'reprisal-tactics': {
-    en: 'Universal DEFENSE. Useful but Health (Survival Techniques) usually wins for raw survivability per research point.',
-    he: 'הגנה אוניברסלית. שימושי אבל בריאות (Survival Techniques) בדרך כלל מנצחת בשרידות גולמית לכל נקודת מחקר.',
+    en: '⚠️ MANDATORY GATE. Required prerequisite for Special Defensive Training, which itself gates Survival Techniques V+VI and Assault Techniques V+VI. Health > Defense for raw survivability per point, but if you skip Reprisal you cannot unlock the high-tier universal stats. Work it alongside Health, not after.',
+    he: '⚠️ שער חובה. תנאי מקדים נדרש ל-Special Defensive Training, שבעצמו חוסם את Survival Techniques V+VI ו-Assault Techniques V+VI. בריאות > הגנה לשרידות לכל נקודה, אבל אם תדלג על Reprisal לא תוכל לפתוח את הסטטיסטיקות האוניברסליות בtier הגבוה. עבוד עליו במקביל לבריאות, לא אחרי.',
   },
   'special-defensive-training': {
-    en: 'Niche bonus that only matters in specific PvP scenarios. Lower priority than universal stats and class-specific lethality.',
-    he: 'בונוס נישתי שחשוב רק בתרחישי PvP ספציפיים. עדיפות נמוכה יותר מסטטיסטיקות אוניברסליות וקטלניות לכיתה.',
+    en: '⚠️ CRITICAL GATE. This is NOT a low-priority stat tech — it is the prerequisite that unlocks Survival Techniques V+VI (All Troops Health) AND Assault Techniques V+VI (All Troops Lethality), the two single most valuable Battle techs in the entire game. If you skip this, you literally cannot research the highest-impact upgrades. Push tier-by-tier in parallel with the universal stats — never leave it behind.',
+    he: '⚠️ שער קריטי. זה לא טכנולוגיה בעדיפות נמוכה — זה התנאי המקדים שפותח את Survival Techniques V+VI (בריאות כל החיילים) ואת Assault Techniques V+VI (קטלניות כל החיילים), שתי הטכנולוגיות הכי חשובות בעץ הקרב. אם תדלג על זה — אתה פשוט לא יכול לחקור את השדרוגים החשובים ביותר. עבוד tier-by-tier במקביל לסטטיסטיקות האוניברסליות — לעולם אל תשאיר מאחור.',
   },
   'shield-upgrade': {
     en: 'Infantry HEALTH. Infantry exists to absorb damage — Health is its single most important stat. Top class-specific priority.',
@@ -1578,10 +1578,16 @@ const TREES = {
         effect: 'Rally Capacity', icon: Users, priority: 'HIGH',
         tip: '👥 More troops in your rally = bigger damage hits. Worth more for rally leaders than joiners.',
       }),
-      // Universal — LOW
+      // Universal — Attack/Defense (lower stat priority but Defense techs are gates to V/VI tiers)
       fam('weapons-prep', 'Weapons Prep', BATTLE_LO, { effect: 'All Troops Attack', icon: Sword, priority: 'LOW', tip: '⚔️ Lethality > Attack. Only push after Lethality stats are maxed.' }),
-      fam('reprisal-tactics', 'Reprisal Tactics', BATTLE_HI, { effect: 'All Troops Defense', icon: Shield, priority: 'LOW', tip: '🛡️ Health > Defense. Only push after Health stats are maxed.' }),
-      fam('special-defensive-training', 'Special Defensive Training', BATTLE_LO, { effect: 'Defense Bonus', icon: Shield, priority: 'LOW' }),
+      fam('reprisal-tactics', 'Reprisal Tactics', BATTLE_HI, {
+        effect: 'All Troops Defense', icon: Shield, priority: 'MED',
+        tip: '🛡️ Required prerequisite for Special Defensive Training, which gates Survival/Assault V+VI. Don\'t skip — work it alongside Defense.',
+      }),
+      fam('special-defensive-training', 'Special Defensive Training', BATTLE_LO, {
+        effect: 'Defense Bonus', icon: Shield, priority: 'MED',
+        tip: '⚠️ MANDATORY GATE. Survival Techniques V+VI and Assault Techniques V+VI require this. Without it your top-priority All-Troops Health/Lethality is locked out at high tiers. Push it tier by tier alongside the universal stats.',
+      }),
       // Infantry
       fam('shield-upgrade', 'Shield Upgrade', BATTLE_HI, {
         effect: 'Infantry Health', icon: Shield, troop: 'infantry', priority: 'HIGH',
@@ -1628,15 +1634,19 @@ const SPEND_PROFILES = {
 // ============================================================
 function priorityOrder(spendProfile) {
   const foundation = ['tool-enhancement', 'tooling-up', 'command-tactics'];
+  // Battle order matches official meta consensus:
+  // 1) Universal Health/Lethality 2) Rally cap 3) Class Lethality+Health
+  // 4) Reprisal+Special Defensive (REQUIRED gates for V+VI tier of universal stats)
+  // 5) Class Defense 6) Other Attack 7) Class Health
   const battleOrder = [
     'survival-techniques', 'assault-techniques', 'regimental-expansion',
-    'targeted-sniping', 'shield-upgrade',  // Archer Lethality + Infantry Health
-    'lance-upgrade',                        // Cav Lethality
+    'targeted-sniping', 'shield-upgrade',           // Archer Lethality + Infantry Health
+    'lance-upgrade',                                 // Cav Lethality
+    'reprisal-tactics', 'special-defensive-training', // GATES — required for Survival/Assault V+VI
     'precision-targeting', 'defensive-formations',
-    'cavalry-charge',
+    'cavalry-charge', 'weapons-prep',
     'leathercraft', 'fortified-mail',
     'picket-lines', 'bulwark-formations', 'close-combat',
-    'weapons-prep', 'reprisal-tactics', 'special-defensive-training',
   ];
   const economyGather = ['food-foraging', 'wood-gathering', 'stone-mining', 'iron-mining'];
   const growthSupport = ['ward-expansion', 'bandaging', 'trainer-tools'];
@@ -1649,6 +1659,47 @@ function priorityOrder(spendProfile) {
   }
   return [...foundation, ...economyGather, ...growthSupport, ...battleOrder];
 }
+
+// ============================================================
+// STORAGE WRAPPER — uses localStorage on real web (GitHub Pages),
+// falls back to window.storage in artifact preview environment
+// ============================================================
+const KS = {
+  async get(key, shared = false) {
+    // Try localStorage first (real web)
+    try {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        const v = window.localStorage.getItem(shared ? `_shared_${key}` : key);
+        if (v !== null) return { value: v };
+      }
+    } catch (e) {}
+    // Fall back to artifact storage
+    try {
+      if (typeof window !== 'undefined' && window.storage && window.storage.get) {
+        return await window.storage.get(key, shared);
+      }
+    } catch (e) {}
+    return null;
+  },
+  async set(key, value, shared = false) {
+    let ok = false;
+    // Try localStorage
+    try {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        window.localStorage.setItem(shared ? `_shared_${key}` : key, value);
+        ok = true;
+      }
+    } catch (e) {}
+    // Also try artifact storage (best-effort)
+    try {
+      if (typeof window !== 'undefined' && window.storage && window.storage.set) {
+        await window.storage.set(key, value, shared);
+        ok = true;
+      }
+    } catch (e) {}
+    return ok;
+  },
+};
 
 function findFamily(id) {
   for (const [tk, t] of Object.entries(TREES)) {
@@ -2881,7 +2932,7 @@ export default function KingshotAdvisor() {
   useEffect(() => {
     (async () => {
       try {
-        const r = await window.storage.get('kingshot-v9');
+        const r = await KS.get('kingshot-v9');
         if (r && r.value) {
           const s = JSON.parse(r.value);
           if (s.mainTroop) setMainTroop(s.mainTroop);
@@ -2917,7 +2968,7 @@ export default function KingshotAdvisor() {
       // Mark today as active (streak tracking)
       try {
         const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
-        const r = await window.storage.get('kingshot-v9');
+        const r = await KS.get('kingshot-v9');
         let prevDays = [];
         if (r && r.value) {
           const parsed = JSON.parse(r.value);
@@ -2937,14 +2988,14 @@ export default function KingshotAdvisor() {
         // Has this device already been counted?
         let alreadyCounted = false;
         try {
-          const ac = await window.storage.get('counted-here-v2');
+          const ac = await KS.get('counted-here-v2');
           if (ac && ac.value) alreadyCounted = true;
         } catch (e) {}
 
         // Read current shared count
         let local = 0;
         try {
-          const cr = await window.storage.get('global-visitor-count-v2', true);
+          const cr = await KS.get('global-visitor-count-v2', true);
           if (cr && cr.value) local = parseInt(cr.value, 10) || 0;
         } catch (e) {}
 
@@ -2952,8 +3003,8 @@ export default function KingshotAdvisor() {
         if (!alreadyCounted) {
           local = local + 1;
           try {
-            await window.storage.set('global-visitor-count-v2', String(local), true);
-            await window.storage.set('counted-here-v2', '1');
+            await KS.set('global-visitor-count-v2', String(local), true);
+            await KS.set('counted-here-v2', '1');
           } catch (e) {}
         }
 
@@ -3015,7 +3066,7 @@ export default function KingshotAdvisor() {
     if (!hydrated) return;
     (async () => {
       try {
-        await window.storage.set('kingshot-v9', JSON.stringify({
+        await KS.set('kingshot-v9', JSON.stringify({
           mainTroop, progress, activeTree, spendProfile, view,
           theme, lang, fontSize, howToDismissed,
           waveBannerDismissed, pinnedTierId, skippedTiers, activeDays,
