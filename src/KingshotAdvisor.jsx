@@ -910,6 +910,36 @@ const T = {
     pt: 'FIXADO', it: 'FISSATO', tr: 'SABİT',
     zh: '已置顶', ja: 'ピン留め', ko: '고정됨',
   },
+  skipForNow: {
+    en: 'Skip for now', he: 'דלג כרגע', ru: 'Пропустить',
+    de: 'Vorerst überspringen', es: 'Saltar por ahora', fr: 'Passer',
+    pt: 'Pular por agora', it: 'Salta per ora', tr: 'Şimdilik atla',
+    zh: '暂时跳过', ja: '今はスキップ', ko: '지금 건너뛰기',
+  },
+  unskip: {
+    en: 'Unskip', he: 'בטל דילוג', ru: 'Вернуть',
+    de: 'Wiederherstellen', es: 'Recuperar', fr: 'Restaurer',
+    pt: 'Restaurar', it: 'Ripristina', tr: 'Geri al',
+    zh: '取消跳过', ja: 'スキップ解除', ko: '건너뛰기 해제',
+  },
+  skipped: {
+    en: 'Skipped — moved to bottom', he: 'דולג — הועבר לתחתית', ru: 'Пропущено',
+    de: 'Übersprungen', es: 'Saltado', fr: 'Passé',
+    pt: 'Pulado', it: 'Saltato', tr: 'Atlandı',
+    zh: '已跳过', ja: 'スキップしました', ko: '건너뛰었습니다',
+  },
+  unskipped: {
+    en: 'Restored to queue', he: 'הוחזר לתור', ru: 'Восстановлено',
+    de: 'Wiederhergestellt', es: 'Restaurado', fr: 'Restauré',
+    pt: 'Restaurado', it: 'Ripristinato', tr: 'Geri alındı',
+    zh: '已恢复', ja: '復元しました', ko: '복원되었습니다',
+  },
+  skippedSection: {
+    en: 'Skipped techs', he: 'שדרוגים שדולגו', ru: 'Пропущенные',
+    de: 'Übersprungen', es: 'Saltadas', fr: 'Passées',
+    pt: 'Puladas', it: 'Saltate', tr: 'Atlananlar',
+    zh: '已跳过', ja: 'スキップ済み', ko: '건너뛴 항목',
+  },
   // ============ Export / Import ============
   exportProgress: {
     en: 'Export', he: 'ייצא', ru: 'Экспорт',
@@ -1666,9 +1696,10 @@ function buildFullQueue(progress, spendProfile) {
 }
 
 // Get the next N upcoming research items
-function buildNextN(progress, spendProfile, n = 5, pinnedTierId = null) {
+function buildNextN(progress, spendProfile, n = 5, pinnedTierId = null, skippedTierIds = []) {
   const queue = buildFullQueue(progress, spendProfile);
   const result = [];
+  const skipSet = new Set(skippedTierIds || []);
 
   // If a tier is pinned and it's not maxed, push it to the front
   if (pinnedTierId) {
@@ -1684,6 +1715,7 @@ function buildNextN(progress, spendProfile, n = 5, pinnedTierId = null) {
   for (const item of queue) {
     if (result.length >= n) break;
     if (pinnedTierId && item.tier.id === pinnedTierId) continue; // already added
+    if (skipSet.has(item.tier.id)) continue; // user-skipped
     const cur = progress[item.tier.id] || 0;
     if (cur < item.tier.max) {
       result.push({ family: item.family, tier: item.tier, current: cur });
@@ -1844,7 +1876,7 @@ function HexNode({ family, tier, currentLevel, isNext, isPriorityNext, onTap, si
 // ============================================================
 // FOCUS MODE: shows a step-by-step list of upcoming research
 // ============================================================
-function FocusModeView({ nextSteps, onTap, onInc, onMax, onSetLevel, onPinToggle, pinnedTierId, flashTierId, lang = 'en', fsScale = 1 }) {
+function FocusModeView({ nextSteps, onTap, onInc, onMax, onSetLevel, onPinToggle, onSkipToggle, skippedTiers = [], pinnedTierId, flashTierId, lang = 'en', fsScale = 1 }) {
   const [showWhyForTier, setShowWhyForTier] = useState(null);
   const [expandedSet, setExpandedSet] = useState(new Set());
   const toggleExpand = (tierId) => {
@@ -2502,7 +2534,7 @@ function TreeGridView({ tree, progress, nextTierId, onTap, onMaxAll, lang, fsSca
 // ============================================================
 // DRAWER
 // ============================================================
-function TierDrawer({ payload, spendProfile, onClose, onInc, onDec, onMax, onZero, onSetLevel, onPinToggle, isPinned, lang = 'en', fsScale = 1 }) {
+function TierDrawer({ payload, spendProfile, onClose, onInc, onDec, onMax, onZero, onSetLevel, onPinToggle, isPinned, onSkipToggle, isSkipped, lang = 'en', fsScale = 1 }) {
   // Swipe-to-dismiss state
   const [touchStartY, setTouchStartY] = useState(null);
   const [dragY, setDragY] = useState(0);
@@ -2748,6 +2780,26 @@ function TierDrawer({ payload, spendProfile, onClose, onInc, onDec, onMax, onZer
                 }}>{t('resetTierBtn', lang)}</button>
               )}
             </div>
+
+            {/* Skip-for-now / Unskip — full-text button on its own row */}
+            {!done && onSkipToggle && (
+              <button
+                onClick={() => { onSkipToggle(tier.id); onClose(); }}
+                style={{
+                  marginTop: 8, width: '100%', padding: '12px 0',
+                  borderRadius: 12,
+                  border: `1.5px solid ${isSkipped ? C.coral : C.border}`,
+                  cursor: 'pointer',
+                  background: isSkipped ? C.coralBg : 'transparent',
+                  color: isSkipped ? C.coral : C.inkSoft,
+                  fontSize: 13 * fsScale, fontWeight: 700,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                }}
+              >
+                <EyeOff style={{ width: 15, height: 15 }} strokeWidth={2.4} />
+                {isSkipped ? t('unskip', lang) : t('skipForNow', lang)}
+              </button>
+            )}
           </>
       </div>
     </div>
@@ -2781,6 +2833,8 @@ export default function KingshotAdvisor() {
   const [waveBannerDismissed, setWaveBannerDismissed] = useState(false);
   // Pinned tier (overrides priority queue when set)
   const [pinnedTierId, setPinnedTierId] = useState(null);
+  // User-skipped tiers — hidden from queue but progress still tracked
+  const [skippedTiers, setSkippedTiers] = useState([]);
   // Active days streak — array of YYYY-MM-DD strings
   const [activeDays, setActiveDays] = useState([]);
   // Export/Import modal
@@ -2855,6 +2909,7 @@ export default function KingshotAdvisor() {
           if (typeof s.howToDismissed === 'boolean') setHowToDismissed(s.howToDismissed);
           if (typeof s.waveBannerDismissed === 'boolean') setWaveBannerDismissed(s.waveBannerDismissed);
           if (s.pinnedTierId) setPinnedTierId(s.pinnedTierId);
+          if (Array.isArray(s.skippedTiers)) setSkippedTiers(s.skippedTiers);
           if (Array.isArray(s.activeDays)) setActiveDays(s.activeDays);
         }
       } catch (e) {}
@@ -2963,11 +3018,11 @@ export default function KingshotAdvisor() {
         await window.storage.set('kingshot-v9', JSON.stringify({
           mainTroop, progress, activeTree, spendProfile, view,
           theme, lang, fontSize, howToDismissed,
-          waveBannerDismissed, pinnedTierId, activeDays,
+          waveBannerDismissed, pinnedTierId, skippedTiers, activeDays,
         }));
       } catch (e) {}
     })();
-  }, [mainTroop, progress, activeTree, spendProfile, view, theme, lang, fontSize, howToDismissed, waveBannerDismissed, pinnedTierId, activeDays, hydrated]);
+  }, [mainTroop, progress, activeTree, spendProfile, view, theme, lang, fontSize, howToDismissed, waveBannerDismissed, pinnedTierId, skippedTiers, activeDays, hydrated]);
 
   const findTierMax = (tierId) => {
     for (const t of Object.values(TREES)) {
@@ -3124,7 +3179,7 @@ export default function KingshotAdvisor() {
     showToast(t('allReset', lang), 'success', undoFn);
   };
 
-  const nextSteps = useMemo(() => buildNextN(progress, spendProfile, 5, pinnedTierId), [progress, spendProfile, pinnedTierId]);
+  const nextSteps = useMemo(() => buildNextN(progress, spendProfile, 5, pinnedTierId, skippedTiers), [progress, spendProfile, pinnedTierId, skippedTiers]);
   const next = nextSteps[0] || null;
   const tree = TREES[activeTree];
   const stats = useMemo(() => treeStats(tree, progress), [tree, progress]);
@@ -3485,6 +3540,51 @@ export default function KingshotAdvisor() {
               </button>
             </div>
 
+            {/* Skipped techs section — visible only if user has skipped any */}
+            {skippedTiers.length > 0 && (
+              <div style={{
+                marginTop: 12, padding: 12, borderRadius: 12,
+                background: C.bgSoft,
+              }}>
+                <div style={{
+                  fontSize: 11 * fsScale, fontWeight: 800, letterSpacing: '0.1em',
+                  textTransform: 'uppercase', color: C.muted, marginBottom: 8,
+                }}>
+                  {t('skippedSection', lang)} ({skippedTiers.length})
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {skippedTiers.map(tid => {
+                    const info = findTechInfo(tid);
+                    if (!info) return null;
+                    return (
+                      <div key={tid} style={{
+                        display: 'flex', alignItems: 'center', gap: 8,
+                        padding: '6px 10px', borderRadius: 8,
+                        background: C.card,
+                        fontSize: 12 * fsScale, fontWeight: 700, color: C.ink,
+                      }}>
+                        <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {nameOf(info.family, lang)} {info.tier.roman}
+                        </span>
+                        <button
+                          onClick={() => {
+                            setSkippedTiers(prev => prev.filter(id => id !== tid));
+                            showToast(t('unskipped', lang), 'success');
+                          }}
+                          style={{
+                            padding: '4px 10px', borderRadius: 6,
+                            background: C.tealBg, color: C.tealDark,
+                            border: 'none', cursor: 'pointer',
+                            fontSize: 11 * fsScale, fontWeight: 800,
+                          }}
+                        >{t('unskip', lang)}</button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
             <button
               onClick={reset}
               style={{
@@ -3606,6 +3706,21 @@ export default function KingshotAdvisor() {
                 setPinnedTierId(prev => (prev === tierId ? null : tierId));
                 showToast(pinnedTierId === tierId ? t('unpin', lang) : t('pin', lang), 'success');
               }}
+              onSkipToggle={(tierId) => {
+                setSkippedTiers(prev => {
+                  const isSkipped = prev.includes(tierId);
+                  const next = isSkipped ? prev.filter(id => id !== tierId) : [...prev, tierId];
+                  // Toast feedback with undo
+                  const undoFn = () => setSkippedTiers(prev);
+                  showToast(
+                    isSkipped ? t('unskipped', lang) : t('skipped', lang),
+                    'success',
+                    undoFn
+                  );
+                  return next;
+                });
+              }}
+              skippedTiers={skippedTiers}
               pinnedTierId={pinnedTierId}
               flashTierId={flashTierId}
               lang={lang} fsScale={fsScale}
@@ -4044,6 +4159,20 @@ export default function KingshotAdvisor() {
           showToast(pinnedTierId === drawerPayload?.tier.id ? t('unpin', lang) : t('pin', lang), 'success');
         }}
         isPinned={drawerPayload && pinnedTierId === drawerPayload.tier.id}
+        onSkipToggle={(tierId) => {
+          setSkippedTiers(prev => {
+            const wasSkipped = prev.includes(tierId);
+            const next = wasSkipped ? prev.filter(id => id !== tierId) : [...prev, tierId];
+            const undoFn = () => setSkippedTiers(prev);
+            showToast(
+              wasSkipped ? t('unskipped', lang) : t('skipped', lang),
+              'success',
+              undoFn
+            );
+            return next;
+          });
+        }}
+        isSkipped={drawerPayload && skippedTiers.includes(drawerPayload.tier.id)}
         lang={lang} fsScale={fsScale}
       />
 
