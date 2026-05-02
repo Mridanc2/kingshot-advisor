@@ -2,8 +2,9 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import {
   Hammer, BookOpen, Target, Flag, Mountain, Heart, Users,
   Sword, Shield, Crown, Zap, TreePine, Sparkles, Eye, EyeOff,
-  Plus, Minus, Check, X, RotateCcw, Settings, ChevronDown, ChevronRight,
-  Wallet, Gem, Diamond, ArrowRight, Trophy, Info, Pin, PinOff, Download, Upload, Calendar, Search
+  Plus, Minus, Check, X, RotateCcw, Settings, ChevronDown, ChevronRight, ChevronUp,
+  Wallet, Gem, Diamond, ArrowRight, Trophy, Info, Pin, PinOff, Download, Upload, Calendar, Search,
+  Flame
 } from 'lucide-react';
 
 // ============================================================
@@ -90,18 +91,18 @@ const T = {
     zh: 'xXx Commanders', ja: 'xXx Commanders', ko: 'xXx Commanders',
   },
   appTagline: {
-    en: 'Build the strongest battle character',
-    he: 'בנו את הדמות החזקה ביותר בקרב',
-    ru: 'Создайте сильнейшего боевого персонажа',
-    de: 'Baue den stärksten Kampfcharakter',
-    es: 'Construye el personaje de batalla más fuerte',
-    fr: 'Construisez le personnage de combat le plus fort',
-    pt: 'Construa o personagem de batalha mais forte',
-    it: 'Costruisci il personaggio da battaglia più forte',
-    tr: 'En güçlü savaş karakterini oluştur',
-    zh: '打造最强战斗角色',
-    ja: '最強の戦闘キャラクターを作る',
-    ko: '최강의 전투 캐릭터 만들기',
+    en: 'Academy Research Meta Guide',
+    he: 'מדריך מטא למחקר באקדמיה',
+    ru: 'Гайд по мета-исследованиям в Академии',
+    de: 'Akademie-Forschungs-Meta-Leitfaden',
+    es: 'Guía meta de investigación de la Academia',
+    fr: 'Guide méta de recherche de l\'Académie',
+    pt: 'Guia meta de pesquisa da Academia',
+    it: 'Guida meta alla ricerca dell\'Accademia',
+    tr: 'Akademi Araştırma Meta Rehberi',
+    zh: '学院研究 Meta 攻略',
+    ja: 'アカデミー研究メタガイド',
+    ko: '아카데미 연구 메타 가이드',
   },
   treeAndRec: {
     en: 'Tree + Tip', he: 'עץ + המלצה', ru: 'Дерево + Совет',
@@ -1199,6 +1200,20 @@ const T = {
     ja: '全て完了 — ティア',
     ko: '모두 완료 — 티어',
   },
+  collapseTier: {
+    en: 'Collapse — Tier',
+    he: 'סגור — דרגה',
+    ru: 'Свернуть — Уровень',
+    de: 'Einklappen — Stufe',
+    es: 'Contraer — Nivel',
+    fr: 'Réduire — Niveau',
+    pt: 'Recolher — Nível',
+    it: 'Comprimi — Livello',
+    tr: 'Daralt — Seviye',
+    zh: '收起 — 级别',
+    ja: '折りたたむ — ティア',
+    ko: '접기 — 티어',
+  },
   tierMaxed: {
     en: 'Tier marked done',
     he: 'דרגה סומנה כמושלמת',
@@ -1868,11 +1883,13 @@ function HexNode({ family, tier, currentLevel, isNext, isPriorityNext, onTap, si
 
   const Icon = family.icon || Zap;
   const opacity = dimmed ? 0.4 : 1;
+  const isMax = kind === 'badge-teal';
+  const showHexGlow = isPriorityNext && !done && !isSkip;
 
   return (
     <div
       id={`hex-${tier.id}`}
-      className={isFlashing ? 'flash-hex' : ''}
+      className={`hex-wrap ${isFlashing ? 'flash-hex' : ''} ${showHexGlow ? 'hex-glow' : ''}`.trim()}
       style={{
         display: 'flex', flexDirection: 'column', alignItems: 'center',
         width: size + 14, opacity,
@@ -1907,12 +1924,14 @@ function HexNode({ family, tier, currentLevel, isNext, isPriorityNext, onTap, si
         }}>
           <Icon style={{ color: iconColor, width: size * 0.32, height: size * 0.32 }} strokeWidth={2.2} />
           {kind === 'badge-teal' || kind === 'badge-coral' ? (
-            <div style={{
-              marginTop: 2, padding: '1px 7px',
-              fontSize: 9, fontWeight: 800, borderRadius: 999,
-              background: kind === 'badge-teal' ? C.teal : C.coral,
-              color: '#fff', letterSpacing: '0.05em',
-            }}>{center}</div>
+            <div
+              style={{
+                marginTop: 2, padding: '1px 7px',
+                fontSize: 9, fontWeight: 800, borderRadius: 999,
+                background: isMax ? C.teal : C.coral,
+                color: '#fff', letterSpacing: '0.05em',
+                boxShadow: isMax ? `0 1px 2px ${C.tealDark}44` : 'none',
+              }}>{center}</div>
           ) : (
             <div style={{ marginTop: 1, fontSize: 10, fontWeight: 800, color: iconColor }}>
               {center}
@@ -1941,7 +1960,7 @@ function HexNode({ family, tier, currentLevel, isNext, isPriorityNext, onTap, si
 // ============================================================
 // FOCUS MODE: shows a step-by-step list of upcoming research
 // ============================================================
-function FocusModeView({ nextSteps, onTap, onInc, onMax, onSetLevel, onPinToggle, onSkipToggle, skippedTiers = [], pinnedTierId, flashTierId, lang = 'en', fsScale = 1 }) {
+function FocusModeView({ nextSteps, onTap, onInc, onMax, onSetLevel, onPinToggle, onSkipToggle, skippedTiers = [], pinnedTierId, flashTierId, lang = 'en', fsScale = 1, onResetAllGlobal }) {
   const [showWhyForTier, setShowWhyForTier] = useState(null);
   const [expandedSet, setExpandedSet] = useState(new Set());
   const toggleExpand = (tierId) => {
@@ -1955,12 +1974,62 @@ function FocusModeView({ nextSteps, onTap, onInc, onMax, onSetLevel, onPinToggle
   if (nextSteps.length === 0) {
     return (
       <div style={{
-        padding: 24, borderRadius: 16, background: C.tealBg,
+        padding: 32, borderRadius: 16,
+        background: `linear-gradient(135deg, ${C.tealBg} 0%, ${C.tealSoft}66 100%)`,
         border: `2px solid ${C.teal}`, textAlign: 'center',
+        position: 'relative', overflow: 'hidden',
       }}>
-        <Trophy style={{ color: C.teal, width: 36, height: 36, margin: '0 auto 8px', display: 'block' }} />
+        {/* Trophy with sparkles around it */}
+        <div style={{
+          position: 'relative',
+          width: 80, height: 60,
+          margin: '0 auto 8px',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}>
+          <Sparkles className="sparkle-spin-1" style={{
+            position: 'absolute', top: 0, left: 4,
+            width: 14, height: 14, color: C.amberDark,
+          }} strokeWidth={2.4} />
+          <Sparkles className="sparkle-spin-2" style={{
+            position: 'absolute', top: 6, right: 6,
+            width: 11, height: 11, color: C.teal,
+          }} strokeWidth={2.4} />
+          <Sparkles className="sparkle-spin-3" style={{
+            position: 'absolute', bottom: 0, right: 14,
+            width: 13, height: 13, color: C.amber,
+          }} strokeWidth={2.4} />
+          <Trophy
+            className="trophy-bounce"
+            style={{
+              color: C.teal, width: 44, height: 44,
+              filter: `drop-shadow(0 4px 8px ${C.tealDark}66)`,
+            }}
+            strokeWidth={2.2}
+          />
+        </div>
         <h3 style={{ fontSize: 16 * fsScale, fontWeight: 800, color: C.ink, margin: 0 }}>{t('strongestBuild', lang)}</h3>
         <p style={{ fontSize: 12 * fsScale, color: C.muted, margin: '4px 0 0' }}>{t('everyPriorityMaxed', lang)}</p>
+        {/* Subtle reset link — useful when user finishes everything and wants to start over */}
+        {onResetAllGlobal && (
+          <button
+            onClick={onResetAllGlobal}
+            style={{
+              marginTop: 14,
+              padding: '6px 12px',
+              background: 'transparent',
+              border: `1px dashed ${C.coral}99`,
+              borderRadius: 999,
+              color: C.coral,
+              fontSize: 11 * fsScale, fontWeight: 700,
+              cursor: 'pointer',
+              display: 'inline-flex', alignItems: 'center', gap: 5,
+              opacity: 0.85,
+            }}
+          >
+            <RotateCcw style={{ width: 11, height: 11 }} strokeWidth={2.4} />
+            {t('resetProgress', lang)}
+          </button>
+        )}
       </div>
     );
   }
@@ -1977,25 +2046,25 @@ function FocusModeView({ nextSteps, onTap, onInc, onMax, onSetLevel, onPinToggle
           return (
             <div
               key={step.tier.id}
-              className={isFlashing ? 'flash-success' : ''}
+              className={`hero-glow ${isFlashing ? 'flash-success' : ''}`.trim()}
               style={{
                 padding: 16, borderRadius: 16,
-                background: C.heroBg,
+                background: `linear-gradient(135deg, ${C.heroBg} 0%, ${C.heroInner} 100%)`,
                 border: `3px solid ${C.amberDark}`,
                 position: 'relative',
                 transition: 'all 0.3s ease',
-                boxShadow: '0 4px 12px rgba(200, 127, 21, 0.15)',
               }}
             >
               {/* Top: NEXT label + tech name */}
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
                 <div style={{
                   width: 44, height: 44, borderRadius: 12,
-                  background: C.amberSoft,
+                  background: `linear-gradient(135deg, ${C.amberSoft} 0%, ${C.amberBg} 100%)`,
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   flexShrink: 0,
+                  boxShadow: `0 2px 6px ${C.amberDark}33`,
                 }}>
-                  <Icon style={{ color: C.amberDark, width: 24, height: 24 }} strokeWidth={2.4} />
+                  <Icon className="icon-float" style={{ color: C.amberDark, width: 24, height: 24 }} strokeWidth={2.4} />
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{
@@ -2049,7 +2118,7 @@ function FocusModeView({ nextSteps, onTap, onInc, onMax, onSetLevel, onPinToggle
 
               {/* Why-this explanation panel */}
               {showWhyForTier === step.tier.id && whyOf(step.family, lang) && (
-                <div style={{
+                <div className="why-expand" style={{
                   marginBottom: 12, padding: '10px 12px',
                   borderRadius: 10,
                   background: C.amberBg,
@@ -2107,13 +2176,18 @@ function FocusModeView({ nextSteps, onTap, onInc, onMax, onSetLevel, onPinToggle
                 }}>
                   {Array.from({ length: step.tier.max }).map((_, lvIdx) => {
                     const filled = lvIdx < step.current;
+                    const isLastFilled = filled && lvIdx === step.current - 1;
                     return (
                       <div
                         key={lvIdx}
+                        className={isLastFilled ? 'shimmer-fill' : ''}
                         style={{
                           flex: 1, height: 14, borderRadius: 4,
-                          background: filled ? C.amberDark : C.barEmpty,
-                          transition: 'background 0.3s ease',
+                          background: filled
+                            ? `linear-gradient(180deg, ${C.amber} 0%, ${C.amberDark} 100%)`
+                            : C.barEmpty,
+                          transition: 'background 0.45s cubic-bezier(0.22, 1.4, 0.4, 1)',
+                          boxShadow: filled ? `inset 0 -1px 2px rgba(0,0,0,0.18), 0 1px 3px ${C.amberDark}44` : 'none',
                         }}
                       />
                     );
@@ -2148,13 +2222,17 @@ function FocusModeView({ nextSteps, onTap, onInc, onMax, onSetLevel, onPinToggle
         return (
           <div
             key={step.tier.id}
-            className={isFlashing ? 'flash-success' : ''}
+            className={`slide-in-right ${isFlashing ? 'flash-success' : ''}`.trim()}
             style={{
               borderRadius: 14,
               background: C.card,
               border: `2px solid ${isExpanded ? C.teal : C.border}`,
               transition: 'all 0.3s ease',
               overflow: 'hidden',
+              animationDelay: `${(idx - 1) * 70}ms`,
+              boxShadow: isExpanded
+                ? `0 4px 12px ${C.teal}33`
+                : `0 1px 3px rgba(0,0,0,0.06)`,
             }}
           >
             {/* Header row */}
@@ -2174,9 +2252,11 @@ function FocusModeView({ nextSteps, onTap, onInc, onMax, onSetLevel, onPinToggle
               >
                 <div style={{
                   width: 24, height: 24, borderRadius: 12,
-                  background: C.bgSoft, color: C.muted,
+                  background: `linear-gradient(135deg, ${C.tealSoft} 0%, ${C.teal} 100%)`,
+                  color: '#fff',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   fontSize: 12, fontWeight: 800, flexShrink: 0,
+                  boxShadow: `0 1px 3px ${C.tealDark}55`,
                 }}>
                   {idx + 1}
                 </div>
@@ -2231,7 +2311,7 @@ function FocusModeView({ nextSteps, onTap, onInc, onMax, onSetLevel, onPinToggle
 
             {/* Expanded content — inline */}
             {isExpanded && (
-              <div style={{
+              <div className="why-expand" style={{
                 padding: '0 14px 14px',
                 borderTop: `1px solid ${C.border}`,
                 paddingTop: 12,
@@ -2332,8 +2412,24 @@ function FocusModeView({ nextSteps, onTap, onInc, onMax, onSetLevel, onPinToggle
 // ============================================================
 function PriorityGroup({ title, subtitle, techs, progress, nextTierId, onTap, hexSize, accentColor, gridCols = 4, dimmed, flashTierId, lang = 'en' }) {
   if (techs.length === 0) return null;
+  // Determine subtle background tint based on accent: amber → ① start, teal → ② then, others → neutral
+  let groupBg = 'transparent';
+  let groupBorderL = 'transparent';
+  if (accentColor === C.amberDark) {
+    groupBg = `${C.amberBg}55`;
+    groupBorderL = C.amberDark;
+  } else if (accentColor === C.tealDark) {
+    groupBg = `${C.tealBg}66`;
+    groupBorderL = C.tealDark;
+  }
   return (
-    <div style={{ marginBottom: 14 }}>
+    <div style={{
+      marginBottom: 14,
+      padding: groupBg !== 'transparent' ? '8px 8px 10px' : 0,
+      borderRadius: groupBg !== 'transparent' ? 10 : 0,
+      background: groupBg,
+      borderLeft: groupBorderL !== 'transparent' ? `3px solid ${groupBorderL}` : 'none',
+    }}>
       <div style={{
         display: 'flex', alignItems: 'baseline', gap: 8,
         marginBottom: 8, padding: '0 4px',
@@ -2373,6 +2469,10 @@ function PriorityGroup({ title, subtitle, techs, progress, nextTierId, onTap, he
 function TierSection({ tierIdx, techs, progress, nextTierId, onTap, onMaxAll, onResetAll, defaultOpen, lang = 'en', fsScale = 1, scrollSignal, flashTierId }) {
   const [open, setOpen] = useState(defaultOpen);
   const [showSkip, setShowSkip] = useState(false);
+
+  // Per-tier color (silver → purple → blue → green → gold → orange → crimson)
+  const TIER_COLORS = ['#a8a8a8', '#9b6bd6', '#5b9fde', '#5cb85c', '#f4cf3a', '#ee8a3a', '#d04848'];
+  const tierColor = TIER_COLORS[Math.min(tierIdx, TIER_COLORS.length - 1)] || C.muted;
 
   // Note: We previously auto-collapsed sections when all maxed, but this caused
   // the screen to jump unexpectedly. User keeps the section open after MAX.
@@ -2429,8 +2529,18 @@ function TierSection({ tierIdx, techs, progress, nextTierId, onTap, onMaxAll, on
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             {open ? <ChevronDown style={{ width: 16, height: 16, color: C.muted }} /> : <ChevronRight style={{ width: 16, height: 16, color: C.muted }} />}
+            <div style={{
+              width: 10, height: 10, borderRadius: '50%',
+              background: tierColor,
+              flexShrink: 0,
+            }} />
             <span>{t('tier', lang)} {ROMAN[tierIdx]}</span>
-            {allMaxed && <div style={{ padding: '1px 6px', borderRadius: 999, background: C.teal, color: '#fff', fontSize: 9 * fsScale, fontWeight: 800, letterSpacing: '0.08em' }}>{t('allMaxBadge', lang)}</div>}
+            {allMaxed && <div style={{
+              padding: '1px 6px', borderRadius: 999,
+              background: C.teal,
+              color: '#fff', fontSize: 9 * fsScale, fontWeight: 800, letterSpacing: '0.08em',
+              boxShadow: `0 1px 2px ${C.tealDark}44`,
+            }}>{t('allMaxBadge', lang)}</div>}
           </div>
           <span style={{ fontSize: 11 * fsScale, color: C.muted, fontWeight: 700 }}>{maxedCount}/{techs.length}</span>
         </div>
@@ -2441,13 +2551,19 @@ function TierSection({ tierIdx, techs, progress, nextTierId, onTap, onMaxAll, on
           overflow: 'hidden',
           marginBottom: 10,
         }}>
-          <div style={{
-            height: '100%',
-            width: `${progressPct * 100}%`,
-            background: allMaxed ? C.teal : (progressPct > 0 ? C.amber : 'transparent'),
-            transition: 'width 0.4s ease, background 0.3s ease',
-            borderRadius: 2,
-          }} />
+          <div
+            className={progressPct > 0 && progressPct < 1 ? 'shimmer-fill' : ''}
+            style={{
+              height: '100%',
+              width: `${progressPct * 100}%`,
+              background: allMaxed
+                ? `linear-gradient(90deg, ${C.tealDark} 0%, ${C.teal} 100%)`
+                : (progressPct > 0
+                    ? `linear-gradient(90deg, ${C.amber} 0%, ${C.amberDark} 100%)`
+                    : 'transparent'),
+              transition: 'width 0.5s cubic-bezier(0.22, 1.4, 0.4, 1), background 0.3s ease',
+              borderRadius: 2,
+            }} />
         </div>
       </button>
       {open && (
@@ -2477,6 +2593,27 @@ function TierSection({ tierIdx, techs, progress, nextTierId, onTap, onMaxAll, on
                   {t('markTierDone', lang)} {ROMAN[tierIdx]}
                 </button>
               )}
+              {/* When tier is fully MAX: primary action is Collapse — the natural next step.
+                  Reset is demoted to a small icon-only button to avoid the destructive footgun. */}
+              {allMaxed && (
+                <button
+                  onClick={() => setOpen(false)}
+                  style={{
+                    flex: 1,
+                    padding: '10px 14px', borderRadius: 10,
+                    border: 'none',
+                    background: `linear-gradient(135deg, ${C.teal} 0%, ${C.tealDark} 100%)`,
+                    color: '#fff',
+                    cursor: 'pointer',
+                    fontSize: 12 * fsScale, fontWeight: 800, letterSpacing: '0.05em',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                    boxShadow: `0 2px 8px ${C.tealDark}66`,
+                  }}
+                >
+                  <ChevronUp style={{ width: 14, height: 14 }} strokeWidth={3} />
+                  {t('collapseTier', lang)} {ROMAN[tierIdx]}
+                </button>
+              )}
               {onResetAll && techs.some(({ tier }) => (progress[tier.id] || 0) > 0) && (
                 <button
                   onClick={() => {
@@ -2485,8 +2622,23 @@ function TierSection({ tierIdx, techs, progress, nextTierId, onTap, onMaxAll, on
                       .map(({ tier }) => tier.id);
                     if (tierIds.length > 0) onResetAll(tierIds);
                   }}
-                  style={{
-                    flex: allMaxed ? 1 : 0.6,
+                  title={`${t('resetTierBtn', lang)} ${ROMAN[tierIdx]}`}
+                  aria-label={`${t('resetTierBtn', lang)} ${ROMAN[tierIdx]}`}
+                  style={allMaxed ? {
+                    // Demoted icon-only style after MAX
+                    flex: 'none',
+                    width: 40, height: 40,
+                    padding: 0,
+                    borderRadius: 10,
+                    border: `1px solid ${C.border}`,
+                    background: 'transparent',
+                    color: C.muted,
+                    cursor: 'pointer',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    flexShrink: 0,
+                  } : {
+                    // Original style when tier is in progress (paired with Mark all done)
+                    flex: 0.6,
                     padding: '10px 14px', borderRadius: 10,
                     border: `1.5px dashed ${C.coral}`,
                     background: C.coralBg, color: C.coral,
@@ -2495,8 +2647,8 @@ function TierSection({ tierIdx, techs, progress, nextTierId, onTap, onMaxAll, on
                     display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
                   }}
                 >
-                  <RotateCcw style={{ width: 13, height: 13 }} strokeWidth={3} />
-                  {t('resetTierBtn', lang)} {ROMAN[tierIdx]}
+                  <RotateCcw style={{ width: allMaxed ? 14 : 13, height: allMaxed ? 14 : 13 }} strokeWidth={allMaxed ? 2 : 3} />
+                  {!allMaxed && (<>{t('resetTierBtn', lang)} {ROMAN[tierIdx]}</>)}
                 </button>
               )}
             </div>
@@ -2647,13 +2799,14 @@ function TierDrawer({ payload, spendProfile, onClose, onInc, onDec, onMax, onZer
     && (spendProfile === 'f2p' || spendProfile === 'mid');
 
   return (
-    <div onClick={onClose} style={{
+    <div onClick={onClose} className="overlay-in" style={{
       position: 'fixed', inset: 0, zIndex: 50,
       background: 'rgba(58, 46, 38, 0.32)',
       display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
     }}>
       <div
         onClick={(e) => e.stopPropagation()}
+        className="drawer-spring"
         onTouchStart={(e) => {
           // Only initiate swipe if starting from top portion (handle area)
           const rect = e.currentTarget.getBoundingClientRect();
@@ -2684,6 +2837,7 @@ function TierDrawer({ payload, spendProfile, onClose, onInc, onDec, onMax, onZer
           transform: `translateY(${dragY}px)`,
           transition: dragging ? 'none' : 'transform 0.25s ease-out',
           touchAction: 'pan-y',
+          boxShadow: '0 -8px 32px rgba(0,0,0,0.25)',
         }}
       >
         <div style={{ width: 48, height: 4, borderRadius: 2, background: C.border, margin: '0 auto 16px' }} />
@@ -2691,10 +2845,23 @@ function TierDrawer({ payload, spendProfile, onClose, onInc, onDec, onMax, onZer
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
           <div style={{
             width: 56, height: 56, borderRadius: 16,
-            background: isSkip ? C.coralBg : done ? C.tealBg : C.amberSoft,
+            background: isSkip
+              ? `linear-gradient(135deg, ${C.coralBg} 0%, ${C.coral}33 100%)`
+              : done
+                ? `linear-gradient(135deg, ${C.tealBg} 0%, ${C.tealSoft} 100%)`
+                : `linear-gradient(135deg, ${C.amberSoft} 0%, ${C.amberBg} 100%)`,
             display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+            boxShadow: isSkip
+              ? `0 2px 8px ${C.coral}33`
+              : done
+                ? `0 2px 8px ${C.tealDark}33`
+                : `0 2px 8px ${C.amberDark}33`,
           }}>
-            <Icon style={{ color: isSkip ? C.coral : done ? C.tealDark : C.amberDark, width: 28, height: 28 }} strokeWidth={2.2} />
+            <Icon
+              className="icon-float"
+              style={{ color: isSkip ? C.coral : done ? C.tealDark : C.amberDark, width: 28, height: 28 }}
+              strokeWidth={2.2}
+            />
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
             <h3 style={{ fontSize: 18 * fsScale, fontWeight: 800, color: C.ink, margin: 0, lineHeight: 1.2 }}>
@@ -2825,15 +2992,24 @@ function TierDrawer({ payload, spendProfile, onClose, onInc, onDec, onMax, onZer
                       <button
                         key={lv}
                         onClick={() => onSetLevel(tier.id, lv)}
+                        className="pill-pop"
                         style={{
                           minWidth: 36, height: 32, padding: '0 8px',
                           borderRadius: 16, cursor: 'pointer',
                           border: `1.5px solid ${isCurrent ? (done ? C.teal : C.amberDark) : C.border}`,
-                          background: isCurrent ? (done ? C.teal : C.amber) : 'transparent',
+                          background: isCurrent
+                            ? (done
+                                ? `linear-gradient(135deg, ${C.teal} 0%, ${C.tealDark} 100%)`
+                                : `linear-gradient(135deg, ${C.amber} 0%, ${C.amberDark} 100%)`)
+                            : 'transparent',
                           color: isCurrent ? '#fff' : C.inkSoft,
                           fontSize: 13 * fsScale, fontWeight: 800,
                           fontFeatureSettings: '"tnum"',
                           transition: 'all 0.15s ease',
+                          animationDelay: `${lv * 35}ms`,
+                          boxShadow: isCurrent
+                            ? (done ? `0 2px 8px ${C.tealDark}66` : `0 2px 8px ${C.amberDark}66`)
+                            : 'none',
                         }}
                       >
                         {lv}
@@ -2957,6 +3133,40 @@ export default function KingshotAdvisor() {
     setTimeout(() => {
       setFlashTierId(prev => (prev === tierId ? null : prev));
     }, 600);
+  };
+
+  // ===== Confetti =====
+  // Each entry: { id, x, y, parts: [{ angle, dist, color, rot, size }] }
+  const [confettiBursts, setConfettiBursts] = useState([]);
+  const triggerConfetti = (x, y) => {
+    const id = Date.now() + Math.random();
+    const colors = ['#f4a93a', '#c87f15', '#4dc1d6', '#2a8a99', '#5cb85c', '#d97757', '#fff5d6', '#a8e4ec'];
+    const parts = Array.from({ length: 12 }).map((_, i) => {
+      const angle = (i / 12) * Math.PI * 2 + (Math.random() - 0.5) * 0.4;
+      const dist = 60 + Math.random() * 50;
+      return {
+        dx: Math.cos(angle) * dist,
+        dy: Math.sin(angle) * dist - 10, // slight upward bias
+        color: colors[Math.floor(Math.random() * colors.length)],
+        rot: (Math.random() * 720 - 360) | 0,
+        size: 7 + Math.random() * 6,
+      };
+    });
+    setConfettiBursts(prev => [...prev, { id, x, y, parts }]);
+    setTimeout(() => {
+      setConfettiBursts(prev => prev.filter(b => b.id !== id));
+    }, 1100);
+  };
+  // Convenience: trigger confetti from a hex element (or center if missing)
+  const triggerConfettiForTier = (tierId) => {
+    if (typeof document === 'undefined') return;
+    const el = document.getElementById(`hex-${tierId}`);
+    if (el && typeof el.getBoundingClientRect === 'function') {
+      const r = el.getBoundingClientRect();
+      triggerConfetti(r.left + r.width / 2, r.top + r.height / 2);
+    } else {
+      triggerConfetti(window.innerWidth / 2, window.innerHeight / 2);
+    }
   };
 
   // Load saved state
@@ -3132,6 +3342,7 @@ export default function KingshotAdvisor() {
     const cur = progress[tierId] || 0;
     if (cur >= max) {
       showToast(t('alreadyMaxed', lang), 'warn');
+      triggerConfettiForTier(tierId);
       return;
     }
     const newLevel = cur + 1;
@@ -3147,6 +3358,7 @@ export default function KingshotAdvisor() {
       };
       if (newLevel >= info.tier.max) {
         showToast(`✓ ${nameOf(info.family, lang)} ${info.tier.roman} ${t('maxedSuffix', lang)}`, 'success', undoFn);
+        triggerConfettiForTier(tierId);
       } else {
         showToast(`+1 ${effectOf(info.family, lang)} (${t('nowAt', lang)} ${newLevel}/${info.tier.max})`, 'success', undoFn);
       }
@@ -3177,6 +3389,7 @@ export default function KingshotAdvisor() {
     const cur = progress[tierId] || 0;
     if (cur >= max) {
       showToast(t('alreadyMaxed', lang), 'warn');
+      triggerConfettiForTier(tierId);
       return;
     }
     setProgress(prev => ({ ...prev, [tierId]: max }));
@@ -3190,6 +3403,7 @@ export default function KingshotAdvisor() {
         setDrawerPayload(d => (d && d.tier.id === tierId ? { ...d, currentLevel: cur } : d));
       };
       showToast(`✓ ${nameOf(info.family, lang)} ${info.tier.roman} ${t('maxedSuffix', lang)}`, 'success', undoFn);
+      triggerConfettiForTier(tierId);
     }
     triggerFlash(tierId);
   };
@@ -3290,6 +3504,25 @@ export default function KingshotAdvisor() {
       fontFamily: "'Nunito', system-ui, -apple-system, sans-serif",
       direction: isRTL ? 'rtl' : 'ltr',
     }}>
+      {/* === Confetti particle layer === */}
+      {confettiBursts.map(burst => (
+        <div key={burst.id} style={{ position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 100 }}>
+          {burst.parts.map((p, i) => (
+            <span
+              key={i}
+              className="confetti-particle"
+              style={{
+                left: burst.x, top: burst.y,
+                width: p.size, height: p.size,
+                background: p.color,
+                ['--dx']: `${p.dx}px`,
+                ['--dy']: `${p.dy}px`,
+                ['--rot']: `${p.rot}deg`,
+              }}
+            />
+          ))}
+        </div>
+      ))}
       <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet" />
       <style>{`
         * { box-sizing: border-box; }
@@ -3333,6 +3566,176 @@ export default function KingshotAdvisor() {
           30% { filter: brightness(1.18) drop-shadow(0 0 10px rgba(76, 184, 92, 0.95)); transform: scale(1.08); }
         }
         .flash-hex { animation: flashHex 0.65s ease-out; }
+
+        /* === VISUAL POLISH === */
+
+        /* Hero card subtle background glow pulse */
+        @keyframes heroGlow {
+          0%, 100% { box-shadow: 0 4px 12px rgba(200, 127, 21, 0.15), 0 0 0 0 rgba(244, 169, 58, 0); }
+          50%      { box-shadow: 0 6px 18px rgba(200, 127, 21, 0.28), 0 0 24px 2px rgba(244, 169, 58, 0.18); }
+        }
+        .hero-glow { animation: heroGlow 3.4s ease-in-out infinite; }
+
+        /* Gentle icon float — works on icons inside containers */
+        @keyframes iconFloat {
+          0%, 100% { transform: translateY(0); }
+          50%      { transform: translateY(-2.5px); }
+        }
+        .icon-float { animation: iconFloat 2.6s ease-in-out infinite; }
+
+        /* Golden pulse around priority-next hex (drop-shadow because hex isn't rectangular) */
+        @keyframes hexGlow {
+          0%, 100% { filter: drop-shadow(0 0 0 rgba(244, 169, 58, 0))   drop-shadow(0 0 0 rgba(200, 127, 21, 0)); }
+          50%      { filter: drop-shadow(0 0 8px rgba(244, 169, 58, 0.65)) drop-shadow(0 0 14px rgba(200, 127, 21, 0.35)); }
+        }
+        .hex-glow { animation: hexGlow 2.2s ease-in-out infinite; }
+
+        /* Shimmer for progress bars */
+        @keyframes shimmer {
+          0%   { transform: translateX(-100%); }
+          100% { transform: translateX(220%); }
+        }
+        .shimmer-fill {
+          position: relative;
+          overflow: hidden;
+        }
+        .shimmer-fill::after {
+          content: '';
+          position: absolute; top: 0; bottom: 0;
+          left: 0; width: 40%;
+          background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.45) 50%, transparent 100%);
+          animation: shimmer 2.4s ease-in-out infinite;
+          pointer-events: none;
+        }
+
+        /* MAX badge sheen */
+        @keyframes maxShine {
+          0%   { background-position: -120% 0; }
+          50%  { background-position: 220% 0; }
+          100% { background-position: 220% 0; }
+        }
+        .max-shine {
+          background-size: 220% 100% !important;
+          animation: maxShine 3.2s ease-in-out infinite;
+        }
+
+        /* Wave Queue cards 2-5 slide in from right */
+        @keyframes slideInRight {
+          0%   { opacity: 0; transform: translateX(18px); }
+          100% { opacity: 1; transform: translateX(0); }
+        }
+        .slide-in-right {
+          animation: slideInRight 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+        }
+
+        /* Tab switch fade-in */
+        @keyframes tabFadeIn {
+          0%   { opacity: 0; transform: translateY(6px); }
+          100% { opacity: 1; transform: translateY(0); }
+        }
+        .tab-fade-in { animation: tabFadeIn 0.32s ease-out; }
+
+        /* Crown gentle tilt */
+        @keyframes crownTilt {
+          0%, 100% { transform: rotate(-4deg); }
+          50%      { transform: rotate(4deg); }
+        }
+        .crown-tilt { animation: crownTilt 3.8s ease-in-out infinite; transform-origin: 50% 80%; }
+
+        /* Drawer spring slide-up */
+        @keyframes drawerSpring {
+          0%   { transform: translateY(40px); opacity: 0; }
+          60%  { transform: translateY(-6px); opacity: 1; }
+          80%  { transform: translateY(2px); }
+          100% { transform: translateY(0); }
+        }
+        .drawer-spring { animation: drawerSpring 0.42s cubic-bezier(0.22, 1.4, 0.4, 1); }
+
+        /* Level pill pop */
+        @keyframes pillPop {
+          0%   { opacity: 0; transform: scale(0.6); }
+          70%  { opacity: 1; transform: scale(1.08); }
+          100% { transform: scale(1); }
+        }
+        .pill-pop { animation: pillPop 0.32s cubic-bezier(0.22, 1.4, 0.4, 1) both; }
+
+        /* Confetti particle burst */
+        @keyframes confettiBurst {
+          0%   { opacity: 1; transform: translate(-50%, -50%) translate(0, 0) rotate(0deg) scale(1); }
+          100% { opacity: 0; transform: translate(-50%, -50%) translate(var(--dx), var(--dy)) rotate(var(--rot)) scale(0.6); }
+        }
+        .confetti-particle {
+          position: fixed;
+          width: 10px; height: 10px;
+          border-radius: 2px;
+          pointer-events: none;
+          z-index: 100;
+          animation: confettiBurst 0.95s cubic-bezier(0.22, 0.7, 0.36, 1) forwards;
+          will-change: transform, opacity;
+        }
+
+        /* === ROUND 2: more polish === */
+
+        /* Hex hover lift — desktop only (no hover on touch devices) */
+        @media (hover: hover) {
+          .hex-wrap { transition: transform 0.2s ease, opacity 0.2s ease, filter 0.2s ease !important; }
+          .hex-wrap:hover {
+            transform: translateY(-3px);
+            filter: drop-shadow(0 5px 8px rgba(0,0,0,0.22));
+          }
+        }
+
+        /* Why-this panel slide-down */
+        @keyframes whyExpand {
+          0%   { opacity: 0; transform: translateY(-6px); max-height: 0; }
+          100% { opacity: 1; transform: translateY(0);    max-height: 280px; }
+        }
+        .why-expand { animation: whyExpand 0.32s ease-out; overflow: hidden; }
+
+        /* Modal entrance */
+        @keyframes modalIn {
+          0%   { opacity: 0; transform: scale(0.92) translateY(8px); }
+          100% { opacity: 1; transform: scale(1)    translateY(0); }
+        }
+        .modal-in { animation: modalIn 0.28s cubic-bezier(0.22, 1.4, 0.4, 1); }
+        @keyframes overlayIn {
+          0%   { opacity: 0; }
+          100% { opacity: 1; }
+        }
+        .overlay-in { animation: overlayIn 0.22s ease-out; }
+
+        /* Arrow bounce for phase-switch button */
+        @keyframes arrowBounce {
+          0%, 100% { transform: translateX(0); }
+          50%      { transform: translateX(3px); }
+        }
+        .arrow-bounce { animation: arrowBounce 1.1s ease-in-out infinite; }
+
+        /* Trophy bounce for empty-state celebration */
+        @keyframes trophyBounce {
+          0%, 100% { transform: translateY(0) rotate(-3deg); }
+          50%      { transform: translateY(-8px) rotate(3deg); }
+        }
+        .trophy-bounce { animation: trophyBounce 2.4s ease-in-out infinite; }
+
+        /* Sparkle spin for empty-state */
+        @keyframes sparkleSpin {
+          0%   { transform: rotate(0deg) scale(0.85); opacity: 0.6; }
+          50%  { transform: rotate(180deg) scale(1.1); opacity: 1; }
+          100% { transform: rotate(360deg) scale(0.85); opacity: 0.6; }
+        }
+        .sparkle-spin-1 { animation: sparkleSpin 3.2s linear infinite; }
+        .sparkle-spin-2 { animation: sparkleSpin 4.5s linear infinite reverse; animation-delay: 0.4s; }
+        .sparkle-spin-3 { animation: sparkleSpin 3.8s linear infinite; animation-delay: 0.9s; }
+
+        /* Flame flicker for streak badge */
+        @keyframes flameFlicker {
+          0%, 100% { transform: scale(1) translateY(0); filter: brightness(1); }
+          25%      { transform: scale(1.06) translateY(-1px); filter: brightness(1.15); }
+          50%      { transform: scale(0.95) translateY(0); filter: brightness(0.95); }
+          75%      { transform: scale(1.04) translateY(-0.5px); filter: brightness(1.1); }
+        }
+        .flame-flicker { animation: flameFlicker 1.4s ease-in-out infinite; transform-origin: 50% 100%; }
       `}</style>
 
       <div style={{ maxWidth: 480, margin: '0 auto', padding: '20px 16px 80px' }}>
@@ -3372,22 +3775,22 @@ export default function KingshotAdvisor() {
                 </text>
               </svg>
             </div>
-            {/* Wordmark */}
+            {/* Wordmark — Research Meta Guide is now primary, clan name secondary */}
             <div style={{ minWidth: 0 }}>
-              <div style={{
-                fontSize: 11 * fsScale, fontWeight: 800,
-                letterSpacing: '0.25em', color: C.amberDark,
-                lineHeight: 1, fontFamily: 'monospace',
-              }}>xXx</div>
               <h1 style={{
-                fontSize: 19 * fsScale, fontWeight: 900, color: C.ink,
-                margin: '2px 0 0', letterSpacing: '0.04em',
-                lineHeight: 1,
-              }}>COMMANDERS</h1>
+                fontSize: 16 * fsScale, fontWeight: 900, color: C.ink,
+                margin: 0, letterSpacing: '0.02em',
+                lineHeight: 1.15,
+              }}>{t('appTagline', lang)}</h1>
               <p style={{
-                fontSize: 10 * fsScale, color: C.muted,
-                margin: '3px 0 0', letterSpacing: '0.02em',
-              }}>{t('appTagline', lang)}</p>
+                fontSize: 10 * fsScale,
+                margin: '4px 0 0', letterSpacing: '0.18em',
+                lineHeight: 1, fontWeight: 700,
+                fontFamily: 'monospace',
+              }}>
+                <span style={{ color: C.amberDark }}>xXx</span>
+                <span style={{ color: C.muted }}>{' '}COMMANDERS</span>
+              </p>
             </div>
           </div>
           <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
@@ -3402,6 +3805,18 @@ export default function KingshotAdvisor() {
               }}
             >
               <Search style={{ color: C.muted, width: 18, height: 18 }} />
+            </button>
+            <button
+              onClick={reset}
+              title={t('resetProgress', lang)}
+              aria-label={t('resetProgress', lang)}
+              style={{
+                width: 40, height: 40, borderRadius: 20,
+                background: C.card, border: `2px solid ${C.border}`,
+                cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}
+            >
+              <RotateCcw style={{ color: C.muted, width: 18, height: 18 }} strokeWidth={2.2} />
             </button>
             <button
               onClick={() => setSettingsOpen(!settingsOpen)}
@@ -3589,15 +4004,29 @@ export default function KingshotAdvisor() {
               {Object.entries(SPEND_PROFILES).map(([key, p]) => {
                 const Icon = p.icon;
                 const active = key === spendProfile;
+                // Distinct gradient per tier when active
+                const gradients = {
+                  f2p:   `linear-gradient(135deg, #6b7280 0%, #4b5563 100%)`,
+                  mid:   `linear-gradient(135deg, ${C.teal} 0%, ${C.tealDark} 100%)`,
+                  whale: `linear-gradient(135deg, ${C.amber} 0%, ${C.amberDark} 100%)`,
+                };
+                const shadows = {
+                  f2p:   '0 3px 10px rgba(75, 85, 99, 0.4)',
+                  mid:   `0 3px 10px ${C.tealDark}66`,
+                  whale: `0 3px 10px ${C.amberDark}66`,
+                };
                 return (
                   <button
                     key={key} onClick={() => setSpendProfile(key)}
                     style={{
                       padding: '10px 4px', borderRadius: 12, border: 'none', cursor: 'pointer',
-                      background: active ? C.teal : C.bgSoft,
+                      background: active ? gradients[key] : C.bgSoft,
                       color: active ? '#fff' : C.ink,
                       display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
                       fontSize: 11 * fsScale, fontWeight: 800,
+                      boxShadow: active ? shadows[key] : 'none',
+                      transition: 'all 0.25s cubic-bezier(0.22, 1.4, 0.4, 1)',
+                      transform: active ? 'translateY(-1px)' : 'translateY(0)',
                     }}
                   >
                     <Icon style={{ width: 18, height: 18 }} strokeWidth={2.2} />
@@ -3637,6 +4066,25 @@ export default function KingshotAdvisor() {
                 {t('importProgress', lang)}
               </button>
             </div>
+
+            {/* Reset all progress — destructive action grouped with data management.
+                More prominent than before so users can find it. */}
+            <button
+              onClick={reset}
+              style={{
+                marginTop: 8, width: '100%',
+                padding: '11px 0',
+                borderRadius: 12, cursor: 'pointer',
+                background: C.coralBg,
+                border: `1.5px solid ${C.coral}`,
+                color: C.coral,
+                fontSize: 13 * fsScale, fontWeight: 800, letterSpacing: '0.03em',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+              }}
+            >
+              <RotateCcw style={{ width: 15, height: 15 }} strokeWidth={2.6} />
+              {t('resetProgress', lang)}
+            </button>
 
             {/* Skipped techs section — visible only if user has skipped any */}
             {skippedTiers.length > 0 && (
@@ -3684,19 +4132,6 @@ export default function KingshotAdvisor() {
             )}
 
             <button
-              onClick={reset}
-              style={{
-                marginTop: 8, width: '100%', padding: '10px 0',
-                borderRadius: 12, border: 'none', cursor: 'pointer',
-                background: C.bgSoft, color: C.coral,
-                fontSize: 13 * fsScale, fontWeight: 700,
-                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-              }}
-            >
-              <RotateCcw style={{ width: 14, height: 14 }} />
-              {t('resetProgress', lang)}
-            </button>
-            <button
               onClick={() => setSettingsOpen(false)}
               style={{
                 marginTop: 8, width: '100%', padding: '10px 0',
@@ -3713,16 +4148,31 @@ export default function KingshotAdvisor() {
           marginBottom: 14, padding: 4,
           background: C.bgSoft, borderRadius: 12,
           display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 4,
+          position: 'relative',
         }}>
+          {/* Sliding indicator behind the buttons */}
+          <div style={{
+            position: 'absolute',
+            top: 4, bottom: 4,
+            left: view === 'tree' ? 4 : 'calc(50% + 2px)',
+            width: 'calc(50% - 6px)',
+            background: C.card,
+            borderRadius: 9,
+            boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
+            transition: 'left 0.28s cubic-bezier(0.22, 1.4, 0.4, 1)',
+            pointerEvents: 'none',
+            zIndex: 0,
+          }} />
           <button
             onClick={() => setView('tree')}
             style={{
               padding: '10px 0', borderRadius: 9, border: 'none', cursor: 'pointer',
-              background: view === 'tree' ? C.card : 'transparent',
+              background: 'transparent',
               color: view === 'tree' ? C.ink : C.muted,
               fontSize: 13 * fsScale, fontWeight: 800,
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-              boxShadow: view === 'tree' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+              position: 'relative', zIndex: 1,
+              transition: 'color 0.2s ease',
             }}
           >
             <TreePine style={{ width: 14, height: 14 }} />
@@ -3732,11 +4182,12 @@ export default function KingshotAdvisor() {
             onClick={() => setView('focus')}
             style={{
               padding: '10px 0', borderRadius: 9, border: 'none', cursor: 'pointer',
-              background: view === 'focus' ? C.card : 'transparent',
+              background: 'transparent',
               color: view === 'focus' ? C.ink : C.muted,
               fontSize: 13 * fsScale, fontWeight: 800,
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-              boxShadow: view === 'focus' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+              position: 'relative', zIndex: 1,
+              transition: 'color 0.2s ease',
             }}
           >
             <Sparkles style={{ width: 14, height: 14 }} />
@@ -3746,7 +4197,7 @@ export default function KingshotAdvisor() {
 
         {/* === WAVE QUEUE / FOCUS VIEW === */}
         {view === 'focus' && (
-          <section>
+          <section className="tab-fade-in">
             {!waveBannerDismissed ? (
               <div style={{
                 marginBottom: 12, padding: '10px 12px',
@@ -3822,13 +4273,14 @@ export default function KingshotAdvisor() {
               pinnedTierId={pinnedTierId}
               flashTierId={flashTierId}
               lang={lang} fsScale={fsScale}
+              onResetAllGlobal={reset}
             />
           </section>
         )}
 
         {/* === FULL TREE VIEW === */}
         {view === 'tree' && (
-          <>
+          <div className="tab-fade-in">
             {/* Phase indicator */}
             {phase && next && (
               <div style={{
@@ -3854,8 +4306,17 @@ export default function KingshotAdvisor() {
                       padding: '4px 10px', borderRadius: 999, border: 'none', cursor: 'pointer',
                       background: C.amber, color: '#fff', fontSize: 11 * fsScale, fontWeight: 800,
                       letterSpacing: '0.05em', whiteSpace: 'nowrap',
+                      display: 'inline-flex', alignItems: 'center', gap: 5,
+                      boxShadow: `0 2px 6px ${C.amberDark}55`,
                     }}
-                  >{t('go', lang)}</button>
+                  >
+                    {t('go', lang)}
+                    <ArrowRight
+                      className="arrow-bounce"
+                      style={{ width: 12, height: 12 }}
+                      strokeWidth={3}
+                    />
+                  </button>
                 )}
               </div>
             )}
@@ -4117,7 +4578,7 @@ export default function KingshotAdvisor() {
                 flashTierId={flashTierId}
               />
             </section>
-          </>
+          </div>
         )}
 
         {/* === BRAND FOOTER — xXx wordmark, slogans, compact counter === */}
@@ -4223,19 +4684,51 @@ export default function KingshotAdvisor() {
           )}
 
           {/* Days active streak */}
-          {activeDays.length > 0 && (
-            <div style={{
-              marginTop: 14,
-              fontSize: 11 * fsScale, color: C.inkSoft, fontWeight: 700,
-              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-            }}>
-              <Calendar style={{ width: 13, height: 13, color: C.tealDark }} strokeWidth={2.4} />
-              <span>
-                <strong style={{ color: C.tealDark }}>{activeDays.length}</strong>
-                {' '}{t('daysActive', lang)}
-              </span>
-            </div>
-          )}
+          {activeDays.length > 0 && (() => {
+            const days = activeDays.length;
+            // Tier: 1-2 = calendar only, 3-6 = small flame, 7-29 = bigger flame, 30+ = flame + crown
+            const tier = days >= 30 ? 'legendary' : days >= 7 ? 'hot' : days >= 3 ? 'warm' : 'cool';
+            const flameSize = tier === 'legendary' ? 18 : tier === 'hot' ? 16 : 14;
+            const flameColor = tier === 'legendary' ? '#ff6a00'
+                             : tier === 'hot' ? '#f4a93a'
+                             : tier === 'warm' ? '#f4cf3a'
+                             : null;
+            return (
+              <div style={{
+                marginTop: 14,
+                fontSize: 11 * fsScale, color: C.inkSoft, fontWeight: 700,
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+              }}>
+                {tier === 'cool' ? (
+                  <Calendar style={{ width: 13, height: 13, color: C.tealDark }} strokeWidth={2.4} />
+                ) : (
+                  <>
+                    {tier === 'legendary' && (
+                      <Crown
+                        className="crown-tilt"
+                        style={{ width: 14, height: 14, color: C.amberDark, marginRight: -2 }}
+                        strokeWidth={2.4}
+                      />
+                    )}
+                    <Flame
+                      className="flame-flicker"
+                      style={{
+                        width: flameSize, height: flameSize,
+                        color: flameColor,
+                        filter: tier === 'legendary' ? `drop-shadow(0 0 6px ${flameColor}88)` : 'none',
+                      }}
+                      strokeWidth={2.4}
+                      fill={tier === 'legendary' ? flameColor : 'none'}
+                    />
+                  </>
+                )}
+                <span>
+                  <strong style={{ color: tier === 'cool' ? C.tealDark : flameColor }}>{days}</strong>
+                  {' '}{t('daysActive', lang)}
+                </span>
+              </div>
+            );
+          })()}
 
           {/* Data sources */}
           <p style={{
@@ -4279,6 +4772,7 @@ export default function KingshotAdvisor() {
       {recruitOpen && (
         <div
           onClick={() => setRecruitOpen(false)}
+          className="overlay-in"
           style={{
             position: 'fixed', inset: 0, zIndex: 65,
             background: 'rgba(58, 46, 38, 0.7)',
@@ -4288,6 +4782,7 @@ export default function KingshotAdvisor() {
         >
           <div
             onClick={(e) => e.stopPropagation()}
+            className="modal-in"
             style={{
               width: '100%', maxWidth: 460,
               background: C.card, color: C.ink,
@@ -4466,6 +4961,7 @@ export default function KingshotAdvisor() {
         return (
           <div
             onClick={() => setSearchOpen(false)}
+            className="overlay-in"
             style={{
               position: 'fixed', inset: 0, zIndex: 60,
               background: 'rgba(58, 46, 38, 0.6)',
@@ -4475,6 +4971,7 @@ export default function KingshotAdvisor() {
           >
             <div
               onClick={(e) => e.stopPropagation()}
+              className="modal-in"
               style={{
                 width: '100%', maxWidth: 480,
                 background: C.card, color: C.ink,
@@ -4595,6 +5092,7 @@ export default function KingshotAdvisor() {
       {importExportMode && (
         <div
           onClick={() => { setImportExportMode(null); setExportCopied(false); }}
+          className="overlay-in"
           style={{
             position: 'fixed', inset: 0, zIndex: 60,
             background: 'rgba(58, 46, 38, 0.6)',
@@ -4604,6 +5102,7 @@ export default function KingshotAdvisor() {
         >
           <div
             onClick={(e) => e.stopPropagation()}
+            className="modal-in"
             style={{
               width: '100%', maxWidth: 420,
               background: C.card, color: C.ink,
@@ -4747,6 +5246,7 @@ export default function KingshotAdvisor() {
       {confirmReset && (
         <div
           onClick={() => setConfirmReset(false)}
+          className="overlay-in"
           style={{
             position: 'fixed', inset: 0, zIndex: 60,
             background: 'rgba(58, 46, 38, 0.6)',
@@ -4756,6 +5256,7 @@ export default function KingshotAdvisor() {
         >
           <div
             onClick={(e) => e.stopPropagation()}
+            className="modal-in"
             style={{
               width: '100%', maxWidth: 360,
               background: C.card, color: C.ink,
