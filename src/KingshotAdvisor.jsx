@@ -1213,6 +1213,20 @@ const T = {
     ja: 'ティア完了',
     ko: '티어 완료',
   },
+  tierReset: {
+    en: 'Tier reset',
+    he: 'הדרגה אופסה',
+    ru: 'Уровень сброшен',
+    de: 'Stufe zurückgesetzt',
+    es: 'Nivel reiniciado',
+    fr: 'Niveau réinitialisé',
+    pt: 'Nível redefinido',
+    it: 'Livello azzerato',
+    tr: 'Seviye sıfırlandı',
+    zh: '级别已重置',
+    ja: 'ティアをリセット',
+    ko: '티어 초기화됨',
+  },
 };
 
 // Translate helper
@@ -2356,7 +2370,7 @@ function PriorityGroup({ title, subtitle, techs, progress, nextTierId, onTap, he
   );
 }
 
-function TierSection({ tierIdx, techs, progress, nextTierId, onTap, onMaxAll, defaultOpen, lang = 'en', fsScale = 1, scrollSignal, flashTierId }) {
+function TierSection({ tierIdx, techs, progress, nextTierId, onTap, onMaxAll, onResetAll, defaultOpen, lang = 'en', fsScale = 1, scrollSignal, flashTierId }) {
   const [open, setOpen] = useState(defaultOpen);
   const [showSkip, setShowSkip] = useState(false);
 
@@ -2438,28 +2452,54 @@ function TierSection({ tierIdx, techs, progress, nextTierId, onTap, onMaxAll, de
       </button>
       {open && (
         <div style={{ marginTop: 12, padding: '0 4px' }}>
-          {/* Mark entire tier as done — quick bulk action for veterans */}
-          {!allMaxed && onMaxAll && (
-            <button
-              onClick={() => {
-                const tierIds = techs
-                  .filter(({ tier }) => (progress[tier.id] || 0) < tier.max)
-                  .map(({ tier }) => tier.id);
-                if (tierIds.length > 0) onMaxAll(tierIds);
-              }}
-              style={{
-                width: '100%', marginBottom: 14,
-                padding: '10px 14px', borderRadius: 10,
-                border: `1.5px dashed ${C.teal}`,
-                background: C.tealBg, color: C.tealDark,
-                cursor: 'pointer',
-                fontSize: 12 * fsScale, fontWeight: 800, letterSpacing: '0.05em',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-              }}
-            >
-              <Check style={{ width: 14, height: 14 }} strokeWidth={3} />
-              {t('markTierDone', lang)} {ROMAN[tierIdx]}
-            </button>
+          {/* Bulk action row: Mark all done (when not maxed) + Reset (when something is set) */}
+          {(onMaxAll || onResetAll) && (
+            <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
+              {!allMaxed && onMaxAll && (
+                <button
+                  onClick={() => {
+                    const tierIds = techs
+                      .filter(({ tier }) => (progress[tier.id] || 0) < tier.max)
+                      .map(({ tier }) => tier.id);
+                    if (tierIds.length > 0) onMaxAll(tierIds);
+                  }}
+                  style={{
+                    flex: 1,
+                    padding: '10px 14px', borderRadius: 10,
+                    border: `1.5px dashed ${C.teal}`,
+                    background: C.tealBg, color: C.tealDark,
+                    cursor: 'pointer',
+                    fontSize: 12 * fsScale, fontWeight: 800, letterSpacing: '0.05em',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                  }}
+                >
+                  <Check style={{ width: 14, height: 14 }} strokeWidth={3} />
+                  {t('markTierDone', lang)} {ROMAN[tierIdx]}
+                </button>
+              )}
+              {onResetAll && techs.some(({ tier }) => (progress[tier.id] || 0) > 0) && (
+                <button
+                  onClick={() => {
+                    const tierIds = techs
+                      .filter(({ tier }) => (progress[tier.id] || 0) > 0)
+                      .map(({ tier }) => tier.id);
+                    if (tierIds.length > 0) onResetAll(tierIds);
+                  }}
+                  style={{
+                    flex: allMaxed ? 1 : 0.6,
+                    padding: '10px 14px', borderRadius: 10,
+                    border: `1.5px dashed ${C.coral}`,
+                    background: C.coralBg, color: C.coral,
+                    cursor: 'pointer',
+                    fontSize: 12 * fsScale, fontWeight: 800, letterSpacing: '0.05em',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                  }}
+                >
+                  <RotateCcw style={{ width: 13, height: 13 }} strokeWidth={3} />
+                  {t('resetTierBtn', lang)} {ROMAN[tierIdx]}
+                </button>
+              )}
+            </div>
           )}
           <PriorityGroup
             title={t('startWith', lang)}
@@ -2538,7 +2578,7 @@ function TierSection({ tierIdx, techs, progress, nextTierId, onTap, onMaxAll, de
   );
 }
 
-function TreeGridView({ tree, progress, nextTierId, onTap, onMaxAll, lang, fsScale, scrollSignal, flashTierId }) {
+function TreeGridView({ tree, progress, nextTierId, onTap, onMaxAll, onResetAll, lang, fsScale, scrollSignal, flashTierId }) {
   const visibleFams = tree.families;
 
   return (
@@ -2562,7 +2602,7 @@ function TreeGridView({ tree, progress, nextTierId, onTap, onMaxAll, lang, fsSca
           <TierSection
             key={tIdx} tierIdx={tIdx} techs={techs}
             progress={progress} nextTierId={nextTierId}
-            onTap={onTap} onMaxAll={onMaxAll} defaultOpen={isFirstIncomplete}
+            onTap={onTap} onMaxAll={onMaxAll} onResetAll={onResetAll} defaultOpen={isFirstIncomplete}
             lang={lang} fsScale={fsScale}
             scrollSignal={scrollSignal}
             flashTierId={flashTierId}
@@ -3170,6 +3210,22 @@ export default function KingshotAdvisor() {
       setProgress(prev => ({ ...prev, ...prevValues }));
     };
     showToast(`✓ ${t('tierMaxed', lang)} (${tierIds.length})`, 'success', undoFn);
+  };
+
+  // Bulk: reset all techs in a tier back to 0
+  const resetAllInTier = (tierIds) => {
+    if (!tierIds || tierIds.length === 0) return;
+    const prevValues = {};
+    tierIds.forEach(id => { prevValues[id] = progress[id] || 0; });
+    setProgress(prev => {
+      const next = { ...prev };
+      tierIds.forEach(id => { next[id] = 0; });
+      return next;
+    });
+    const undoFn = () => {
+      setProgress(prev => ({ ...prev, ...prevValues }));
+    };
+    showToast(`↺ ${t('tierReset', lang)} (${tierIds.length})`, 'success', undoFn);
   };
 
   const zeroTier = (tierId) => {
@@ -4055,6 +4111,7 @@ export default function KingshotAdvisor() {
                 tree={tree} progress={progress}
                 nextTierId={next ? next.tier.id : null} onTap={setDrawerPayload}
                 onMaxAll={maxAllInTier}
+                onResetAll={resetAllInTier}
                 lang={lang} fsScale={fsScale}
                 scrollSignal={scrollSignal}
                 flashTierId={flashTierId}
